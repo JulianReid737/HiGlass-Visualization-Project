@@ -1,0 +1,202 @@
+/* General App Layout & Theme */
+:root {
+  --primary-color: #007bff;
+  --light-gray: #f8f9fa;
+  --medium-gray: #e9ecef;
+  --dark-gray: #6c757d;
+  --text-color: #212529;
+  --border-radius: 8px;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background-color: var(--light-gray);
+  color: var(--text-color);
+}
+
+.App {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.App-header, main {
+  width: 95%;
+  max-width: 900px;
+  background-color: #ffffff;
+  padding: 1.5rem 2rem;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  margin-bottom: 2rem;
+  border: 1px solid var(--medium-gray);
+  box-sizing: border-box;
+}
+
+main {
+  position: relative; 
+}
+
+.file-upload-label {
+  display: inline-block;
+  padding: 10px 20px;
+  background-color: var(--primary-color);
+  color: white;
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-weight: bold;
+}
+
+input[type="file"] {
+  display: none;
+}
+
+.visualization-container {
+  margin-top: 1.5rem;
+}
+
+.visualization-container svg, .visualization-container canvas {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.view-switcher {
+  margin-bottom: 2rem;
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.view-switcher button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+  border: 2px solid var(--primary-color);
+  border-radius: var(--border-radius);
+  background-color: white;
+  color: var(--primary-color);
+}
+
+.view-switcher button:disabled {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.file-upload-container {
+    margin-bottom: 1.5rem;
+}
+
+.info-panel {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 280px;
+  background-color: white;
+  border: 1px solid var(--medium-gray);
+  box-shadow: var(--box-shadow);
+  border-radius: var(--border-radius);
+  padding: 1rem;
+  z-index: 10;
+  text-align: left;
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 15px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.error-message {
+  color: #c00;
+  font-weight: bold;
+}
+
+.biotype-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background-color: var(--medium-gray);
+  color: var(--dark-gray);
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+/* --- STYLES for Interactive Hi-C View --- */
+.hic-chart-wrapper {
+  display: grid;
+  grid-template-columns: 50px 1fr; /* Y-axis | Canvas */
+  grid-template-rows: 1fr 30px;    /* Canvas | X-axis */
+  width: 100%;
+}
+
+.y-axis {
+  grid-column: 1 / 2;
+  grid-row: 1 / 2;
+}
+
+.hic-canvas {
+    cursor: grab;
+    border: 1px solid var(--medium-gray);
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
+}
+
+.x-axis {
+  grid-column: 2 / 3;
+  grid-row: 2 / 3;
+}
+
+.hic-canvas:active {
+    cursor: grabbing;
+}
+
+.hic-instructions {
+    color: var(--dark-gray);
+    font-style: italic;
+    margin-bottom: 1rem;
+}
+
+.hic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.analysis-controls button {
+    padding: 8px 12px;
+    background-color: #28a745;
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.tooltip {
+  position: fixed;
+  background-color: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.pathway-section {
+    margin-top: 0.5rem;
+}
