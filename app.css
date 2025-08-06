@@ -137,26 +137,31 @@ input[type="file"] {
 /* --- STYLES for Interactive Hi-C View --- */
 .hic-chart-wrapper {
   display: grid;
-  grid-template-columns: 50px 1fr; /* Y-axis | Canvas */
-  grid-template-rows: 1fr 30px;    /* Canvas | X-axis */
+  grid-template-columns: 50px 1fr; /* Y-axis | Main Area */
+  grid-template-rows: 20px 1fr 30px; /* Compartment Track | Canvas | X-axis */
   width: 100%;
 }
 
 .y-axis {
   grid-column: 1 / 2;
-  grid-row: 1 / 2;
+  grid-row: 2 / 3;
 }
 
 .hic-canvas {
     cursor: grab;
     border: 1px solid var(--medium-gray);
     grid-column: 2 / 3;
-    grid-row: 1 / 2;
+    grid-row: 2 / 3;
 }
 
 .x-axis {
   grid-column: 2 / 3;
-  grid-row: 2 / 3;
+  grid-row: 3 / 4;
+}
+
+.compartment-track {
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
 }
 
 .hic-canvas:active {
@@ -174,6 +179,11 @@ input[type="file"] {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 0.5rem;
+}
+
+.analysis-controls {
+    display: flex;
+    gap: 0.5rem;
 }
 
 .analysis-controls button {
