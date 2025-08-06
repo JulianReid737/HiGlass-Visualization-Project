@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import * as d3 from 'd3';
-import PathwayGraph from './PathwayGraph'; 
+import PathwayGraph from './PathwayGraph';
 import './App.css';
 
+// useResizeObserver and GeneInfoPanel components are unchanged...
 const useResizeObserver = (ref) => {
     const [dimensions, setDimensions] = useState(null);
     useLayoutEffect(() => {
@@ -23,6 +24,7 @@ const useResizeObserver = (ref) => {
 };
 
 function GeneInfoPanel({ gene, onClose }) {
+  // This component is unchanged
   const [geneDetails, setGeneDetails] = useState(null);
   const [pathwayGraph, setPathwayGraph] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,7 +61,7 @@ function GeneInfoPanel({ gene, onClose }) {
           const firstPathwayId = pathwayData[0].stId;
           return fetch(`https://reactome.org/ContentService/data/diagram/entity/${ensemblId}/allforms?flg=${firstPathwayId}`);
         }
-        setPathwayStatus('no_data'); 
+        setPathwayStatus('no_data');
         return null;
       })
       .then(response => {
@@ -103,6 +105,7 @@ function GeneInfoPanel({ gene, onClose }) {
 }
 
 function GeneTracksView() {
+  // This component is unchanged
   const [bedData, setBedData] = useState(null);
   const [fileName, setFileName] = useState('');
   const [selectedGene, setSelectedGene] = useState(null);
@@ -179,43 +182,71 @@ function GeneTracksView() {
   );
 }
 
+
 function HiCHeatmapView({ setTooltip }) {
   const canvasRef = useRef(null);
   const xAxisRef = useRef(null);
   const yAxisRef = useRef(null);
+  const compartmentRef = useRef(null);
   const containerRef = useRef(null);
   const dimensions = useResizeObserver(containerRef);
   
   const [error, setError] = useState(null);
   const [status, setStatus] = useState('idle');
-  const [boundaries, setBoundaries] = useState(null);
+  const [tads, setTads] = useState(null);
+  const [compartments, setCompartments] = useState(null);
   const [matrixData, setMatrixData] = useState(null);
   
   const [tileCoords, setTileCoords] = useState({ zoom: 0, x: 0, y: 0 });
   const [transform, setTransform] = useState(d3.zoomIdentity);
+  const [tadMethod, setTadMethod] = useState('insulation');
 
-  const handleFindBoundaries = () => {
+  const handleFindTADs = () => {
+    const resolution = [10000, 20000, 40000, 80000, 160000, 320000, 640000, 1280000, 2560000, 5120000][tileCoords.zoom];
+    const start = tileCoords.x * 256 * resolution;
+    const end = (tileCoords.x + 1) * 256 * resolution;
+    const region = `chr2:${start}-${end}`;
+
+    fetch(`http://localhost:5000/api/v1/tads`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ region: region, method: tadMethod }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        setTads(data);
+      })
+      .catch(err => {
+        console.error("TAD fetch error:", err);
+        setError('Failed to fetch TADs.');
+      });
+  };
+
+  const handleFindCompartments = () => {
     const resolution = [10000, 20000, 40000, 80000, 160000, 320000, 640000, 1280000, 2560000, 5120000][tileCoords.zoom];
     const start = tileCoords.x * 256 * resolution;
     const end = (tileCoords.x + 1) * 256 * resolution;
     
-    fetch(`http://localhost:5000/api/v1/boundaries?region=chr2:${start}-${end}`)
+    fetch(`http://localhost:5000/api/v1/compartments?region=chr2:${start}-${end}`)
       .then(res => res.json())
       .then(data => {
         if (data.error) throw new Error(data.error);
-        const adjustedBoundaries = data.map(b => ({ ...b, boundary_idx: (b.start / resolution) - (start / resolution) }));
-        setBoundaries(adjustedBoundaries);
+        setCompartments(data);
       })
       .catch(err => {
-        console.error("Boundary fetch error:", err);
-        setError('Failed to fetch TAD boundaries.');
+        console.error("Compartment fetch error:", err);
+        setError('Failed to fetch A/B compartments.');
       });
   };
 
   useEffect(() => {
     setStatus('fetching');
     setError(null);
-    setBoundaries(null);
+    setTads(null);
+    setCompartments(null);
     fetch(`http://localhost:5000/api/v1/tiles/${tileCoords.zoom}/${tileCoords.x}/${tileCoords.y}`)
       .then(res => res.json())
       .then(tileData => {
@@ -256,27 +287,26 @@ function HiCHeatmapView({ setTooltip }) {
       }
     }
     
-    if (boundaries) {
+    const resolution = [10000, 20000, 40000, 80000, 160000, 320000, 640000, 1280000, 2560000, 5120000][tileCoords.zoom];
+    const viewStart = tileCoords.x * 256 * resolution;
+
+    if (tads) {
         ctx.strokeStyle = 'rgba(0, 0, 255, 0.7)';
         ctx.lineWidth = 2 / transform.k;
-        boundaries.forEach(boundary => {
-            const pos = boundary.boundary_idx * pixelSize;
-            ctx.beginPath();
-            ctx.moveTo(pos, 0);
-            ctx.lineTo(pos, size);
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.moveTo(0, pos);
-            ctx.lineTo(size, pos);
-            ctx.stroke();
+        tads.forEach(tad => {
+            const x = ((tad.start - viewStart) / resolution) * pixelSize;
+            const y = x;
+            const tadSize = ((tad.end - tad.start) / resolution) * pixelSize;
+            if (x >= 0 && (x + tadSize) <= size) {
+                ctx.strokeRect(x, y, tadSize, tadSize);
+            }
         });
     }
 
     ctx.restore();
     
-    const resolution = [10000, 20000, 40000, 80000, 160000, 320000, 640000, 1280000, 2560000, 5120000][tileCoords.zoom];
-    const genomicExtent = size / transform.k * resolution;
-    const startCoord = -transform.x / transform.k * resolution;
+    const genomicExtent = (size / transform.k) * resolution;
+    const startCoord = viewStart - (transform.x / transform.k) * resolution;
     const endCoord = startCoord + genomicExtent;
 
     const xScale = d3.scaleLinear().domain([startCoord, endCoord]).range([0, size]);
@@ -291,7 +321,22 @@ function HiCHeatmapView({ setTooltip }) {
     d3.select(yAxisRef.current).selectAll("*").remove();
     d3.select(yAxisRef.current).append("g").attr("transform", `translate(49, 0)`).call(yAxis);
 
-  }, [matrixData, dimensions, transform, boundaries, tileCoords.zoom]);
+    const compartmentSvg = d3.select(compartmentRef.current);
+    compartmentSvg.selectAll("*").remove();
+    if (compartments) {
+        const compartmentColor = d3.scaleOrdinal().domain([-1, 1]).range(['blue', 'red']);
+        compartmentSvg.selectAll('rect')
+            .data(compartments)
+            .enter()
+            .append('rect')
+            .attr('x', d => xScale(d.start))
+            .attr('y', 0)
+            .attr('width', d => Math.max(1, xScale(d.end) - xScale(d.start)))
+            .attr('height', 20)
+            .attr('fill', d => compartmentColor(Math.sign(d.E1)));
+    }
+
+  }, [matrixData, dimensions, transform, tads, compartments, tileCoords]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -312,12 +357,34 @@ function HiCHeatmapView({ setTooltip }) {
     const handleMouseMove = (event) => {
         if (!matrixData || matrixData.length === 0) return;
         const rect = canvas.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
+        const mouseX = event.clientX - rect.left;
+        const mouseY = event.clientY - rect.top;
         
-        const inverted = transform.invert([x, y]);
+        const inverted = transform.invert([mouseX, mouseY]);
         const numBins = matrixData.length;
         const pixelSize = canvas.width / numBins;
+        const resolution = [10000, 20000, 40000, 80000, 160000, 320000, 640000, 1280000, 2560000, 5120000][tileCoords.zoom];
+        const viewStart = tileCoords.x * 256 * resolution;
+
+        // --- NEW: TAD Hit Detection Logic ---
+        if (tads) {
+            for (const tad of tads) {
+                const tadX_px = ((tad.start - viewStart) / resolution) * pixelSize;
+                const tadSize_px = ((tad.end - tad.start) / resolution) * pixelSize;
+
+                // Check if mouse is within the bounds of this TAD rectangle
+                if (inverted[0] >= tadX_px && inverted[0] <= tadX_px + tadSize_px &&
+                    inverted[1] >= tadX_px && inverted[1] <= tadX_px + tadSize_px) 
+                {
+                    const content = `TAD: ${d3.format(".3s")(tad.start)} - ${d3.format(".3s")(tad.end)}`;
+                    setTooltip({ visible: true, content: content, x: event.pageX, y: event.pageY });
+                    return; // Exit the function early since we found a match
+                }
+            }
+        }
+        // --- End NEW ---
+
+        // --- Fallback to matrix score tooltip if no TAD was hovered ---
         const i = Math.floor(inverted[1] / pixelSize);
         const j = Math.floor(inverted[0] / pixelSize);
 
@@ -343,14 +410,19 @@ function HiCHeatmapView({ setTooltip }) {
         canvas.removeEventListener('mouseout', handleMouseOut);
     }
 
-  }, [matrixData, transform, setTooltip, tileCoords.zoom]);
+  }, [matrixData, transform, setTooltip, tileCoords.zoom, tads]); // --- MODIFIED: Added `tads` to dependency array
 
   return (
     <div className="visualization-container" ref={containerRef}>
       <div className="hic-header">
         <h3>Hi-C Contact Matrix</h3>
         <div className="analysis-controls">
-          <button onClick={handleFindBoundaries}>Find TADs</button>
+          <select value={tadMethod} onChange={(e) => setTadMethod(e.target.value)}>
+              <option value="insulation">Insulation Score</option>
+              <option value="clustertad">ClusterTAD</option>
+          </select>
+          <button onClick={handleFindTADs}>Find TADs</button>
+          <button onClick={handleFindCompartments}>Find Compartments</button>
         </div>
       </div>
       <div className="hic-instructions">
@@ -360,12 +432,14 @@ function HiCHeatmapView({ setTooltip }) {
       {error && <p className="error-message">{error}</p>}
       <div className="hic-chart-wrapper">
         <svg ref={yAxisRef} className="y-axis"></svg>
+        <svg ref={compartmentRef} className="compartment-track"></svg>
         <canvas ref={canvasRef} className="hic-canvas"></canvas>
         <svg ref={xAxisRef} className="x-axis"></svg>
       </div>
     </div>
   );
 }
+
 
 function App() {
   const [currentView, setCurrentView] = useState('tracks');
