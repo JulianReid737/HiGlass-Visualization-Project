@@ -82,4 +82,3 @@ function PathwayGraph({ graphData, selectedGeneId }) {
 }
 
 export default PathwayGraph;
-s
